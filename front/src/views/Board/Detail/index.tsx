@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { getBoardRequest } from 'src/apis';
-import { MAIN_PATH } from 'src/constants';
+import { deleteBoardRequest, getBoardRequest } from 'src/apis';
+import { BOARD_UPDATE_PATH, MAIN_PATH } from 'src/constants';
 import { GetBoardResponseDto } from 'src/interfaces/response/board';
 import ResponseDto from 'src/interfaces/response/response.dto';
 import { dateFormat } from 'src/utils';
@@ -9,9 +9,10 @@ import defaultProfileImage from 'src/assets/default-profile-image.png';
 
 import './style.css';
 import { useUserStore } from 'src/stores';
+import { useCookies } from 'react-cookie';
 
 //          component          //
-// description: 게시물 상세 컴포넌트 //
+// description: 게시물 상세 화면 //
 export default function BoardDetail() {
 
   //          state           //
@@ -19,6 +20,8 @@ export default function BoardDetail() {
   const { boardNumber } = useParams();
   // description: 로그인 유저 정보 상태 //
   const { user } = useUserStore();
+  // description: 쿠키 상태 //
+  const [cookies] = useCookies();
 
   //          function            //
   // description: 네비게이트 함수 //
@@ -39,11 +42,12 @@ export default function BoardDetail() {
     const [showMore, setShowMore] = useState<boolean>(false);
 
     //          function            //
+    // description: 게시물 불러오기 응답 처리 //
     const getBoardResponseHandler = (responseBody: GetBoardResponseDto | ResponseDto) => {
       const { code } = responseBody;
       if (code === 'NB') alert('존재하지 않는 게시물입니다.');
-      if (code === 'VF') alert('게시물 번호가 잘못되었습니다.');
-      if (code === 'DE') alert('데이터베이스 에러입니다.');
+      if (code === 'VF') alert('잘못된 게시물입니다.');
+      if (code === 'DE') alert('데이터베이스 오류입니다.');
       if (code !== 'SU') {
         navigator(MAIN_PATH);
         return;
@@ -53,13 +57,36 @@ export default function BoardDetail() {
       setBoard(board);
   
     }
+    // description: 게시물 삭제 응답 처리 //
+    const deleteBoardResponseHandler = (code: string) => {
+      if (code === 'NU') alert('존재하지 않는 유저입니다.');
+      if (code === 'NB') alert('존재하지 않는 게시물입니다.');
+      if (code === 'NP') alert('권한이 없습니다.');
+      if (code === 'VF') alert('잘못된 게시물입니다.');
+      if (code === 'AF') alert('로그인이 필요합니다.');
+      if (code === 'DE') alert('데이터베이스 오류입니다.');
+      if (code !== 'SU') return;
+
+      alert('게시물 삭제에 성공했습니다.');
+      navigator(MAIN_PATH);
+    }
 
     //          event handler           //
     // description: more 버튼 이벤트 처리 //
     const onMoreButtonClickHandler = () => {
       setShowMore(!showMore);
     }
-  
+    // description: 수정 버튼 클릭 이벤트 처리 //
+    const onUpdateButtonClickHandler = () => {
+      if (!boardNumber) return;
+      navigator(BOARD_UPDATE_PATH(boardNumber));
+    }
+    // description: 삭제 버튼 클릭 이벤트 처리 //
+    const onDeleteButtonClickHandler = () => {
+      const accessToken = cookies.accessToken;
+      if (!boardNumber) return;
+      deleteBoardRequest(boardNumber, accessToken).then(deleteBoardResponseHandler);
+    }  
 
     //          effect            //
     // description: 게시물 번호가 바뀔 때 마다 실행 //
@@ -92,9 +119,9 @@ export default function BoardDetail() {
             <div className='board-detail-more-button-box'>
               {showMore && (
               <div className='more-button-group'>
-                <div className='more-button'>{'수정'}</div>
+                <div className='more-button' onClick={onUpdateButtonClickHandler}>{'수정'}</div>
                 <div className='divider'></div>
-                <div className='more-button-red'>{'삭제'}</div>
+                <div className='more-button-red' onClick={onDeleteButtonClickHandler}>{'삭제'}</div>
               </div>
               )}
               { isWriter && (
@@ -119,7 +146,30 @@ export default function BoardDetail() {
 const BoardBottom = () => {
   //           render             //
   return (
-    <div></div>
+    <div className='board-bottom'>
+      <div className='board-bottom-button-container'>
+        <div className='board-bottom-button-group'>
+          <div className='board-detail-bottom-button'>
+            <div className='favorite-icon'></div>
+          </div>
+          <div className='board-detail-bottom-text'>{`좋아요 12`}</div>
+          <div className='board-detail-bottom-button'>
+            <div className='down-icon'></div>
+          </div>
+        </div>
+        <div className='board-bottom-button-group'>
+          <div className='board-detail-bottom-icon'>
+            <div className='comment-icon'></div>
+          </div>
+          <div className='board-detail-bottom-text'>{`댓글 3`}</div>
+          <div className='board-detail-bottom-button'>
+            <div className='down-icon'></div>
+          </div>
+        </div>
+      </div>
+      <div className='board-detail-favorite-container'></div>
+      <div className='board-detail-comments-container'></div>
+    </div>
   )
 }
 
